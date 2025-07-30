@@ -20,6 +20,7 @@ const navigation = [
   { name: 'จัดการสินค้า', href: '/products', icon: Package },
   { name: 'ลูกค้า', href: '/customers', icon: Users },
   { name: 'รายงาน', href: '/reports', icon: BarChart3 },
+  { name: 'ทดสอบ Database', href: '/database-test', icon: Settings },
   { name: 'ตั้งค่า', href: '/settings', icon: Settings },
 ]
 
