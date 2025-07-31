@@ -135,13 +135,29 @@ export default function SalesPage() {
     if (cart.length === 0) return
 
     try {
+      // Generate unique sale number
+      const saleNumber = `SL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
+      
       // Create sale record
       const subtotal = getTotalAmount()
       const finalTotal = getDiscountedTotal()
       
+      console.log('Creating sale with data:', {
+        sale_number: saleNumber,
+        total_amount: finalTotal,
+        subtotal: subtotal,
+        discount_amount: discountData.discount_amount,
+        discount_percentage: discountData.discount_percentage,
+        promotion_id: selectedPromotion?.id || null,
+        promotion_name: discountData.promotion_name || null,
+        payment_method: 'cash',
+        status: 'completed'
+      })
+      
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
+          sale_number: saleNumber,
           total_amount: finalTotal,
           subtotal: subtotal,
           discount_amount: discountData.discount_amount,
@@ -154,7 +170,12 @@ export default function SalesPage() {
         .select()
         .single()
 
-      if (saleError) throw saleError
+      if (saleError) {
+        console.error('Sale creation error:', saleError)
+        throw saleError
+      }
+
+      console.log('Sale created successfully:', saleData)
 
       // Create sale items
       const saleItems = cart.map(item => ({
@@ -165,27 +186,55 @@ export default function SalesPage() {
         total_price: item.total
       }))
 
+      console.log('Creating sale items:', saleItems)
+
       const { error: itemsError } = await supabase
         .from('sale_items')
         .insert(saleItems)
 
-      if (itemsError) throw itemsError
+      if (itemsError) {
+        console.error('Sale items creation error:', itemsError)
+        throw itemsError
+      }
+
+      console.log('Sale items created successfully')
 
       // Update product stock
       for (const item of cart) {
+        console.log(`Updating stock for product ${item.id}: ${item.stock_quantity} - ${item.quantity} = ${item.stock_quantity - item.quantity}`)
+        
         const { error: stockError } = await supabase
           .from('products')
-          .update({ stock_quantity: item.stock - item.quantity })
+          .update({ stock_quantity: item.stock_quantity - item.quantity })
           .eq('id', item.id)
 
-        if (stockError) throw stockError
+        if (stockError) {
+          console.error(`Stock update error for product ${item.id}:`, stockError)
+          throw stockError
+        }
       }
 
-      alert('ขายสำเร็จ!')
+      console.log('Stock updated successfully')
+      alert(`ขายสำเร็จ! หมายเลขการขาย: ${saleNumber}`)
       clearCart()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during checkout:', error)
-      alert('เกิดข้อผิดพลาดในการขาย')
+      
+      let errorMessage = 'เกิดข้อผิดพลาดในการขาย'
+      
+      if (error?.message) {
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'หมายเลขการขายซ้ำ กรุณาลองใหม่อีกครั้ง'
+        } else if (error.message.includes('foreign key')) {
+          errorMessage = 'ข้อมูลสินค้าไม่ถูกต้อง'
+        } else if (error.message.includes('constraint')) {
+          errorMessage = 'ข้อมูลไม่ถูกต้องตามเงื่อนไขของระบบ'
+        } else {
+          errorMessage += ': ' + error.message
+        }
+      }
+      
+      alert(errorMessage)
     }
   }
 
