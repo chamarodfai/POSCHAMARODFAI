@@ -239,7 +239,7 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ฿{product.price.toLocaleString()}
+                      ฿{product.selling_price.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       ฿{product.cost_price.toLocaleString()}
@@ -332,7 +332,7 @@ function ProductModal({
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    price: product?.price || 0,
+    price: product?.selling_price || 0,  // ใช้ selling_price จาก database
     cost_price: product?.cost_price || 0,
     barcode: product?.barcode || '',
     category: product?.category || 'อาหารและเครื่องดื่ม',
@@ -368,7 +368,7 @@ function ProductModal({
       const productData = {
         name: formData.name.trim(),
         description: formData.description?.trim() || '',
-        price: parseFloat(formData.price.toString()),
+        selling_price: parseFloat(formData.price.toString()), // ใช้ selling_price แทน price
         cost_price: parseFloat(formData.cost_price?.toString() || '0'),
         sku: formData.sku?.trim() || '',
         barcode: formData.barcode?.trim() || '',

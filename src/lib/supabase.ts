@@ -10,7 +10,7 @@ export interface Product {
   id: string
   name: string
   description?: string
-  price: number
+  selling_price: number  // เปลี่ยนจาก price เป็น selling_price
   cost_price: number
   sku?: string
   barcode?: string
