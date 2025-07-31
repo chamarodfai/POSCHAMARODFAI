@@ -13,11 +13,7 @@ DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS promotions CASCADE;
 
--- Drop existing policies and views
-DROP POLICY IF EXISTS "Allow all operations on menu_items" ON menu_items;
-DROP POLICY IF EXISTS "Allow all operations on orders" ON orders;
-DROP TABLE IF EXISTS menu_items CASCADE;
-DROP TABLE IF EXISTS orders CASCADE;
+-- Drop existing views
 DROP VIEW IF EXISTS menu_profit;
 DROP VIEW IF EXISTS active_promotions;
 
@@ -168,23 +164,23 @@ CREATE TRIGGER update_sales_updated_at BEFORE UPDATE ON sales
 CREATE TRIGGER update_promotions_updated_at BEFORE UPDATE ON promotions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Enable Row Level Security (RLS)
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_movements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
+-- Disable Row Level Security for development (enable later for production)
+-- ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE inventory_movements ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
 
--- Create policies for public access (development mode)
-CREATE POLICY "Allow all operations for everyone" ON categories FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON products FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON customers FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON sales FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON sale_items FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON inventory_movements FOR ALL USING (true);
-CREATE POLICY "Allow all operations for everyone" ON promotions FOR ALL USING (true);
+-- Create policies for public access (development mode) - These won't be needed with RLS disabled
+-- CREATE POLICY "Allow all operations for everyone" ON categories FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON products FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON customers FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON sales FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON sale_items FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON inventory_movements FOR ALL USING (true);
+-- CREATE POLICY "Allow all operations for everyone" ON promotions FOR ALL USING (true);
 
 -- Insert categories สำหรับร้านชาไทย
 INSERT INTO categories (name, description, color) VALUES
