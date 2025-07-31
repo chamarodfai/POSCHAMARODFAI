@@ -7,9 +7,18 @@ CREATE INDEX IF NOT EXISTS idx_sales_sale_number ON sales(sale_number);
 CREATE INDEX IF NOT EXISTS idx_sales_sale_date ON sales(sale_date);
 
 -- Update existing sales to have sale_numbers if they don't have them
-UPDATE sales 
-SET sale_number = 'SL' || EXTRACT(EPOCH FROM created_at)::bigint || LPAD((ROW_NUMBER() OVER (ORDER BY created_at))::text, 3, '0')
-WHERE sale_number IS NULL;
+DO $$
+DECLARE
+    rec RECORD;
+    counter INTEGER := 1;
+BEGIN
+    FOR rec IN SELECT id, created_at FROM sales WHERE sale_number IS NULL ORDER BY created_at LOOP
+        UPDATE sales 
+        SET sale_number = 'SL' || EXTRACT(EPOCH FROM rec.created_at)::bigint || LPAD(counter::text, 3, '0')
+        WHERE id = rec.id;
+        counter := counter + 1;
+    END LOOP;
+END $$;
 
 -- Make sale_number required after updating existing records
 ALTER TABLE sales 
@@ -42,29 +51,47 @@ SET sku = NULL
 WHERE sku = '';
 
 -- Fix any duplicate barcodes by making them unique
-WITH duplicates AS (
-    SELECT barcode, 
-           ROW_NUMBER() OVER (PARTITION BY barcode ORDER BY created_at) as rn
-    FROM products 
-    WHERE barcode IS NOT NULL 
-    AND barcode != ''
-)
-UPDATE products 
-SET barcode = products.barcode || '_' || duplicates.rn
-FROM duplicates 
-WHERE products.barcode = duplicates.barcode 
-AND duplicates.rn > 1;
+DO $$
+DECLARE
+    rec RECORD;
+    counter INTEGER;
+BEGIN
+    FOR rec IN 
+        SELECT barcode, array_agg(id ORDER BY created_at) as product_ids
+        FROM products 
+        WHERE barcode IS NOT NULL AND barcode != ''
+        GROUP BY barcode 
+        HAVING COUNT(*) > 1
+    LOOP
+        counter := 2;
+        FOR i IN 2..array_length(rec.product_ids, 1) LOOP
+            UPDATE products 
+            SET barcode = rec.barcode || '_' || counter::text
+            WHERE id = rec.product_ids[i];
+            counter := counter + 1;
+        END LOOP;
+    END LOOP;
+END $$;
 
 -- Fix any duplicate SKUs by making them unique
-WITH sku_duplicates AS (
-    SELECT sku, 
-           ROW_NUMBER() OVER (PARTITION BY sku ORDER BY created_at) as rn
-    FROM products 
-    WHERE sku IS NOT NULL 
-    AND sku != ''
-)
-UPDATE products 
-SET sku = products.sku || '_' || sku_duplicates.rn
-FROM sku_duplicates 
-WHERE products.sku = sku_duplicates.sku 
-AND sku_duplicates.rn > 1;
+DO $$
+DECLARE
+    rec RECORD;
+    counter INTEGER;
+BEGIN
+    FOR rec IN 
+        SELECT sku, array_agg(id ORDER BY created_at) as product_ids
+        FROM products 
+        WHERE sku IS NOT NULL AND sku != ''
+        GROUP BY sku 
+        HAVING COUNT(*) > 1
+    LOOP
+        counter := 2;
+        FOR i IN 2..array_length(rec.product_ids, 1) LOOP
+            UPDATE products 
+            SET sku = rec.sku || '_' || counter::text
+            WHERE id = rec.product_ids[i];
+            counter := counter + 1;
+        END LOOP;
+    END LOOP;
+END $$;
