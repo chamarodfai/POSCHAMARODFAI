@@ -60,6 +60,9 @@ SET stock_quantity = 0
 WHERE stock_quantity IS NULL;
 
 -- 8. Create a function to generate sale numbers safely
+-- Drop existing function first if it exists
+DROP FUNCTION IF EXISTS generate_sale_number();
+
 CREATE OR REPLACE FUNCTION generate_sale_number()
 RETURNS VARCHAR(50) AS $$
 DECLARE
