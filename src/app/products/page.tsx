@@ -350,29 +350,83 @@ function ProductModal({
     setIsLoading(true)
 
     try {
+      // Debug: log form data
+      console.log('Submitting form data:', formData)
+      
+      // Validate required fields
+      if (!formData.name.trim()) {
+        alert('กรุณาใส่ชื่อสินค้า')
+        return
+      }
+      
+      if (!formData.price || formData.price <= 0) {
+        alert('กรุณาใส่ราคาขายที่ถูกต้อง')
+        return
+      }
+
+      // Prepare data for insertion/update
+      const productData = {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || '',
+        price: parseFloat(formData.price.toString()),
+        cost_price: parseFloat(formData.cost_price?.toString() || '0'),
+        sku: formData.sku?.trim() || '',
+        barcode: formData.barcode?.trim() || '',
+        category: formData.category,
+        stock_quantity: parseInt(formData.stock_quantity?.toString() || '0'),
+        min_stock_level: parseInt(formData.min_stock_level?.toString() || '5'),
+        unit: formData.unit?.trim() || 'ชิ้น',
+        image_url: formData.image_url?.trim() || '',
+        is_active: formData.is_active ?? true
+      }
+
+      console.log('Prepared data for database:', productData)
+
       if (product) {
         // Update existing product
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('products')
-          .update(formData)
+          .update(productData)
           .eq('id', product.id)
+          .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('Update error:', error)
+          throw error
+        }
+        console.log('Update successful:', data)
         alert('อัปเดตสินค้าสำเร็จ!')
       } else {
         // Create new product
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('products')
-          .insert([formData])
+          .insert([productData])
+          .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('Insert error:', error)
+          throw error
+        }
+        console.log('Insert successful:', data)
         alert('เพิ่มสินค้าสำเร็จ!')
       }
 
       onSave()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error)
-      alert('เกิดข้อผิดพลาดในการบันทึกสินค้า')
+      
+      // More detailed error message
+      let errorMessage = 'เกิดข้อผิดพลาดในการบันทึกสินค้า'
+      
+      if (error?.message) {
+        errorMessage += ': ' + error.message
+      }
+      
+      if (error?.details) {
+        errorMessage += ' (' + error.details + ')'
+      }
+      
+      alert(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -458,6 +512,35 @@ function ProductModal({
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  รหัสสินค้า (SKU)
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.sku}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  หน่วย
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.unit}
+                  onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                >
+                  <option value="ชิ้น">ชิ้น</option>
+                  <option value="แก้ว">แก้ว</option>
+                  <option value="ถุง">ถุง</option>
+                  <option value="กิโลกรัม">กิโลกรัม</option>
+                  <option value="ลิตร">ลิตร</option>
+                </select>
               </div>
 
               <div>
