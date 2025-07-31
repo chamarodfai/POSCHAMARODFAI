@@ -332,7 +332,7 @@ function ProductModal({
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    price: product?.selling_price || 0,  // ใช้ selling_price จาก database
+    selling_price: product?.selling_price || 0,
     cost_price: product?.cost_price || 0,
     barcode: product?.barcode || '',
     category: product?.category || 'อาหารและเครื่องดื่ม',
@@ -359,18 +359,39 @@ function ProductModal({
         return
       }
       
-      if (!formData.price || formData.price <= 0) {
+      if (!formData.selling_price || formData.selling_price <= 0) {
         alert('กรุณาใส่ราคาขายที่ถูกต้อง')
         return
+      }
+
+      // ตรวจสอบ SKU ซ้ำ (ถ้ามีการใส่ SKU)
+      if (formData.sku?.trim()) {
+        const { data: existingProduct, error: checkError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('sku', formData.sku.trim())
+          .neq('id', product?.id || '') // ไม่นับตัวเอง (กรณีแก้ไข)
+          .single()
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking SKU:', checkError)
+          alert('เกิดข้อผิดพลาดในการตรวจสอบรหัสสินค้า')
+          return
+        }
+
+        if (existingProduct) {
+          alert('รหัสสินค้า (SKU) นี้มีอยู่แล้ว กรุณาใช้รหัสอื่น')
+          return
+        }
       }
 
       // Prepare data for insertion/update
       const productData = {
         name: formData.name.trim(),
         description: formData.description?.trim() || '',
-        selling_price: parseFloat(formData.price.toString()), // ใช้ selling_price แทน price
+        selling_price: parseFloat(formData.selling_price.toString()),
         cost_price: parseFloat(formData.cost_price?.toString() || '0'),
-        sku: formData.sku?.trim() || '',
+        sku: formData.sku?.trim() || null, // ใช้ null แทน empty string
         barcode: formData.barcode?.trim() || '',
         category: formData.category,
         stock_quantity: parseInt(formData.stock_quantity?.toString() || '0'),
@@ -482,8 +503,8 @@ function ProductModal({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                  value={formData.selling_price}
+                  onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value) || 0 })}
                 />
               </div>
 
