@@ -11,12 +11,14 @@ export interface Product {
   name: string
   description?: string
   price: number
-  cost: number
+  cost_price: number
+  sku?: string
   barcode?: string
   category: string
   stock_quantity: number
   stock: number // alias for stock_quantity
   min_stock_level: number
+  unit?: string
   image_url?: string
   is_active: boolean
   created_at: string

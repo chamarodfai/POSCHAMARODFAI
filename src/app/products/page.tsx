@@ -242,7 +242,7 @@ export default function ProductsPage() {
                       ฿{product.price.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ฿{product.cost.toLocaleString()}
+                      ฿{product.cost_price.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -333,13 +333,15 @@ function ProductModal({
     name: product?.name || '',
     description: product?.description || '',
     price: product?.price || 0,
-    cost: product?.cost || 0,
+    cost_price: product?.cost_price || 0,
     barcode: product?.barcode || '',
     category: product?.category || 'อาหารและเครื่องดื่ม',
     stock_quantity: product?.stock_quantity || 0,
     min_stock_level: product?.min_stock_level || 5,
     image_url: product?.image_url || '',
-    is_active: product?.is_active ?? true
+    is_active: product?.is_active ?? true,
+    sku: product?.sku || '',
+    unit: product?.unit || 'ชิ้น'
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -441,8 +443,8 @@ function ProductModal({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.cost}
-                  onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                  value={formData.cost_price}
+                  onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
                 />
               </div>
 
