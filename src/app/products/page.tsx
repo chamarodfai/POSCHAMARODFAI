@@ -385,6 +385,27 @@ function ProductModal({
         }
       }
 
+      // ตรวจสอบ Barcode ซ้ำ (ถ้ามีการใส่ Barcode)
+      if (formData.barcode?.trim()) {
+        const { data: existingBarcodeProduct, error: barcodeCheckError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('barcode', formData.barcode.trim())
+          .neq('id', product?.id || '') // ไม่นับตัวเอง (กรณีแก้ไข)
+          .single()
+
+        if (barcodeCheckError && barcodeCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking Barcode:', barcodeCheckError)
+          alert('เกิดข้อผิดพลาดในการตรวจสอบบาร์โค้ด')
+          return
+        }
+
+        if (existingBarcodeProduct) {
+          alert('บาร์โค้ดนี้มีอยู่แล้ว กรุณาใช้บาร์โค้ดอื่น')
+          return
+        }
+      }
+
       // Prepare data for insertion/update
       const productData = {
         name: formData.name.trim(),
@@ -392,7 +413,7 @@ function ProductModal({
         selling_price: parseFloat(formData.selling_price.toString()),
         cost_price: parseFloat(formData.cost_price?.toString() || '0'),
         sku: formData.sku?.trim() || null, // ใช้ null แทน empty string
-        barcode: formData.barcode?.trim() || '',
+        barcode: formData.barcode?.trim() || null, // ใช้ null แทน empty string เพื่อหลีกเลี่ยง constraint error
         category: formData.category,
         stock_quantity: parseInt(formData.stock_quantity?.toString() || '0'),
         min_stock_level: parseInt(formData.min_stock_level?.toString() || '5'),
