@@ -10,7 +10,8 @@ import {
   BarChart3, 
   Settings,
   Menu,
-  X
+  X,
+  Tag
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'หน้าแรก', href: '/', icon: Home },
   { name: 'ขายสินค้า', href: '/sales', icon: ShoppingCart },
   { name: 'จัดการสินค้า', href: '/products', icon: Package },
+  { name: 'โปรโมชั่น', href: '/promotions', icon: Tag },
   { name: 'ลูกค้า', href: '/customers', icon: Users },
   { name: 'รายงาน', href: '/reports', icon: BarChart3 },
   { name: 'ทดสอบ Database', href: '/database-test', icon: Settings },

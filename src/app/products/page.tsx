@@ -39,7 +39,7 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory
   })
 
-  const categories = Array.from(new Set(products.map(p => p.category)))
+  const categories = ['เครื่องดื่ม', 'ขนม', 'Topping']
 
   const deleteProduct = async (id: string) => {
     if (!confirm('ต้องการลบสินค้านี้หรือไม่?')) return
@@ -409,11 +409,10 @@ function ProductModal({
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
-                  <option value="อาหารและเครื่องดื่ม">อาหารและเครื่องดื่ม</option>
-                  <option value="เครื่องใช้ไฟฟ้า">เครื่องใช้ไฟฟ้า</option>
-                  <option value="เสื้อผ้าและแฟชั่น">เสื้อผ้าและแฟชั่น</option>
-                  <option value="เครื่องเขียน">เครื่องเขียน</option>
-                  <option value="ของใช้ในบ้าน">ของใช้ในบ้าน</option>
+                  <option value="">เลือกหมวดหมู่</option>
+                  <option value="เครื่องดื่ม">เครื่องดื่ม</option>
+                  <option value="ขนม">ขนม</option>
+                  <option value="Topping">Topping</option>
                 </select>
               </div>
 

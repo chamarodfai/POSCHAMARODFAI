@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Minus, Trash2, Search, ShoppingCart, CreditCard } from 'lucide-react'
-import { supabase, Product } from '@/lib/supabase'
+import Navigation from '@/components/Navigation'
+import PromotionSelector from '@/components/PromotionSelector'
+import { supabase, Product, Promotion } from '@/lib/supabase'
+import { calculateDiscount } from '@/lib/promotions'
 
 interface CartItem extends Product {
   quantity: number
@@ -15,10 +18,36 @@ export default function SalesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null)
+  const [discountData, setDiscountData] = useState({
+    discount_amount: 0,
+    discount_percentage: 0,
+    promotion_name: ''
+  })
 
   useEffect(() => {
     fetchProducts()
   }, [])
+
+  // Calculate discount when promotion or cart changes
+  useEffect(() => {
+    const calculatePromotionDiscount = async () => {
+      if (!selectedPromotion || cart.length === 0) {
+        setDiscountData({
+          discount_amount: 0,
+          discount_percentage: 0,
+          promotion_name: ''
+        })
+        return
+      }
+
+      const subtotal = cart.reduce((sum, item) => sum + item.total, 0)
+      const discount = await calculateDiscount(subtotal, selectedPromotion.id)
+      setDiscountData(discount)
+    }
+
+    calculatePromotionDiscount()
+  }, [selectedPromotion, cart])
 
   const fetchProducts = async () => {
     try {
@@ -29,7 +58,14 @@ export default function SalesPage() {
         .order('name')
 
       if (error) throw error
-      setProducts(data || [])
+      
+      // Map stock_quantity to stock for easier access
+      const productsWithStock = data?.map(product => ({
+        ...product,
+        stock: product.stock_quantity
+      })) || []
+      
+      setProducts(productsWithStock)
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -59,7 +95,7 @@ export default function SalesPage() {
   }
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
+    if (quantity === 0) {
       removeFromCart(productId)
       return
     }
@@ -77,27 +113,41 @@ export default function SalesPage() {
 
   const clearCart = () => {
     setCart([])
+    setSelectedPromotion(null)
   }
 
   const getTotalAmount = () => {
     return cart.reduce((total, item) => total + item.total, 0)
   }
 
+  const getDiscountedTotal = () => {
+    const subtotal = getTotalAmount()
+    return subtotal - discountData.discount_amount
+  }
+
   const getCartItemCount = () => {
     return cart.reduce((total, item) => total + item.quantity, 0)
   }
 
-  const categories = Array.from(new Set(products.map(p => p.category)))
+  const categories = ['เครื่องดื่ม', 'ขนม', 'Topping']
 
   const handleCheckout = async () => {
     if (cart.length === 0) return
 
     try {
       // Create sale record
+      const subtotal = getTotalAmount()
+      const finalTotal = getDiscountedTotal()
+      
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .insert({
-          total_amount: getTotalAmount(),
+          total_amount: finalTotal,
+          subtotal: subtotal,
+          discount_amount: discountData.discount_amount,
+          discount_percentage: discountData.discount_percentage,
+          promotion_id: selectedPromotion?.id || null,
+          promotion_name: discountData.promotion_name || null,
           payment_method: 'cash',
           status: 'completed'
         })
@@ -125,77 +175,38 @@ export default function SalesPage() {
       for (const item of cart) {
         const { error: stockError } = await supabase
           .from('products')
-          .update({ stock_quantity: item.stock_quantity - item.quantity })
+          .update({ stock_quantity: item.stock - item.quantity })
           .eq('id', item.id)
 
         if (stockError) throw stockError
-
-        // Record inventory movement
-        await supabase
-          .from('inventory_movements')
-          .insert({
-            product_id: item.id,
-            movement_type: 'out',
-            quantity: -item.quantity,
-            reason: 'Sale',
-            reference_id: saleData.id
-          })
       }
 
       alert('ขายสำเร็จ!')
       clearCart()
-      fetchProducts() // Refresh products to update stock
     } catch (error) {
       console.error('Error during checkout:', error)
       alert('เกิดข้อผิดพลาดในการขาย')
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">กำลังโหลดข้อมูลสินค้า...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <ShoppingCart className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">ขายสินค้า</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-                {getCartItemCount()} สินค้า
-              </div>
-              <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                ฿{getTotalAmount().toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Navigation />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Products Section */}
           <div className="lg:col-span-2">
-            {/* Search and Filter */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-              <div className="flex flex-col sm:flex-row gap-4">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">สินค้า</h2>
+              
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
-                    placeholder="ค้นหาสินค้า หรือบาร์โค้ด..."
+                    placeholder="ค้นหาสินค้า หรือ บาร์โค้ด..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -212,131 +223,138 @@ export default function SalesPage() {
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Products Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {filteredProducts.map(product => (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => addToCart(product)}
-                >
-                  <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                    {product.image_url ? (
-                      <img 
-                        src={product.image_url} 
-                        alt={product.name}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="text-gray-400 text-4xl">📦</div>
-                    )}
-                  </div>
-                  <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-lg font-bold text-blue-600 mb-1">
-                    ฿{product.price.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    คงเหลือ: {product.stock_quantity}
-                  </p>
-                  {product.stock_quantity <= product.min_stock_level && (
-                    <div className="text-xs text-red-500 mt-1">
-                      สินค้าใกล้หมด!
+              {/* Products Grid */}
+              {isLoading ? (
+                <div className="text-center py-12">กำลังโหลด...</div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {filteredProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => addToCart(product)}
+                    >
+                      <div className="aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">รูปภาพ</span>
+                      </div>
+                      <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">
+                        {product.name}
+                      </h3>
+                      <p className="text-lg font-bold text-blue-600">
+                        ฿{product.price.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        คงเหลือ: {product.stock}
+                      </p>
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">🔍</div>
-                <p className="text-gray-500">ไม่พบสินค้าที่ค้นหา</p>
-              </div>
-            )}
           </div>
 
           {/* Cart Section */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                ตะกร้าสินค้า
-              </h2>
+            <div className="bg-white rounded-lg shadow p-6 sticky top-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  ตะกร้า ({getCartItemCount()})
+                </h2>
+                {cart.length > 0 && (
+                  <button
+                    onClick={clearCart}
+                    className="text-red-600 hover:text-red-800 text-sm"
+                  >
+                    ล้างทั้งหมด
+                  </button>
+                )}
+              </div>
 
-              {cart.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-gray-400 text-4xl mb-2">🛒</div>
-                  <p className="text-gray-500">ตะกร้าสินค้าว่าง</p>
+              {/* Cart Items */}
+              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
+                {cart.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm text-gray-900">{item.name}</h4>
+                      <p className="text-sm text-gray-600">฿{item.price.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-red-500 hover:text-red-700 ml-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Promotion Selector */}
+              {cart.length > 0 && (
+                <div className="mb-6">
+                  <PromotionSelector
+                    subtotal={getTotalAmount()}
+                    selectedPromotion={selectedPromotion}
+                    onPromotionSelect={setSelectedPromotion}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="max-h-96 overflow-y-auto mb-4">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex items-center justify-between py-3 border-b">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-gray-900 truncate">
-                            {item.name}
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            ฿{item.price.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-2 ml-2">
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="p-1 rounded-full hover:bg-gray-100"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-8 text-center text-sm">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="p-1 rounded-full hover:bg-gray-100"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="p-1 rounded-full hover:bg-red-100 text-red-600 ml-2"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-lg font-semibold">รวมทั้งหมด:</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        ฿{getTotalAmount().toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      <button
-                        onClick={handleCheckout}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center transition-colors"
-                      >
-                        <CreditCard className="h-5 w-5 mr-2" />
-                        ชำระเงิน
-                      </button>
-                      
-                      <button
-                        onClick={clearCart}
-                        className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium transition-colors"
-                      >
-                        ล้างตะกร้า
-                      </button>
-                    </div>
-                  </div>
-                </>
               )}
+
+              {/* Total */}
+              <div className="space-y-2 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span>ยอดรวม:</span>
+                  <span>฿{getTotalAmount().toFixed(2)}</span>
+                </div>
+                
+                {discountData.discount_amount > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>ส่วนลด ({discountData.promotion_name}):</span>
+                      <span>-฿{discountData.discount_amount.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2">
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>ยอดชำระ:</span>
+                        <span className="text-blue-600">฿{getDiscountedTotal().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {discountData.discount_amount === 0 && (
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>ยอดชำระ:</span>
+                    <span className="text-blue-600">฿{getTotalAmount().toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Checkout Button */}
+              <button
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                ชำระเงิน
+              </button>
             </div>
           </div>
         </div>

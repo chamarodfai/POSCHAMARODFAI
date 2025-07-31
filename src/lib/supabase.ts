@@ -15,6 +15,7 @@ export interface Product {
   barcode?: string
   category: string
   stock_quantity: number
+  stock: number // alias for stock_quantity
   min_stock_level: number
   image_url?: string
   is_active: boolean
@@ -45,6 +46,22 @@ export interface Customer {
   updated_at: string
 }
 
+export interface Promotion {
+  id: string
+  name: string
+  description?: string
+  type: 'percentage' | 'fixed'
+  value: number
+  min_amount: number
+  is_active: boolean
+  start_date: string
+  end_date?: string
+  usage_count: number
+  max_usage?: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Sale {
   id: string
   customer_id?: string
@@ -53,6 +70,9 @@ export interface Sale {
   tax_amount: number
   payment_method: 'cash' | 'card' | 'transfer' | 'qr'
   status: 'pending' | 'completed' | 'cancelled'
+  promotion_id?: string
+  promotion_name?: string
+  discount_percentage?: number
   notes?: string
   created_at: string
   updated_at: string
@@ -77,4 +97,10 @@ export interface InventoryMovement {
   reference_id?: string
   notes?: string
   created_at: string
+}
+
+export interface DiscountCalculation {
+  discount_amount: number
+  discount_percentage: number
+  promotion_name: string
 }
