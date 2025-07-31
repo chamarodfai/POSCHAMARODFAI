@@ -86,11 +86,11 @@ export default function SalesPage() {
     if (existingItem) {
       setCart(cart.map(item =>
         item.id === product.id
-          ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.price }
+          ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.selling_price }
           : item
       ))
     } else {
-      setCart([...cart, { ...product, quantity: 1, total: product.price }])
+      setCart([...cart, { ...product, quantity: 1, total: product.selling_price }])
     }
   }
 
@@ -102,7 +102,7 @@ export default function SalesPage() {
 
     setCart(cart.map(item =>
       item.id === productId
-        ? { ...item, quantity, total: quantity * item.price }
+        ? { ...item, quantity, total: quantity * item.selling_price }
         : item
     ))
   }
@@ -161,7 +161,7 @@ export default function SalesPage() {
         sale_id: saleData.id,
         product_id: item.id,
         quantity: item.quantity,
-        unit_price: item.price,
+        unit_price: item.selling_price,
         total_price: item.total
       }))
 
@@ -242,7 +242,7 @@ export default function SalesPage() {
                         {product.name}
                       </h3>
                       <p className="text-lg font-bold text-blue-600">
-                        ฿{product.price.toFixed(2)}
+                        ฿{product.selling_price.toFixed(2)}
                       </p>
                       <p className="text-xs text-gray-500">
                         คงเหลือ: {product.stock}
@@ -278,7 +278,7 @@ export default function SalesPage() {
                   <div key={item.id} className="flex items-center justify-between border-b border-gray-100 pb-4">
                     <div className="flex-1">
                       <h4 className="font-medium text-sm text-gray-900">{item.name}</h4>
-                      <p className="text-sm text-gray-600">฿{item.price.toFixed(2)}</p>
+                      <p className="text-sm text-gray-600">฿{item.selling_price.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
