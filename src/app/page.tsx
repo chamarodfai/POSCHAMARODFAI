@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ShoppingCart, Package, Users, BarChart3, Settings, CreditCard } from 'lucide-react'
+import { ShoppingCart, Package, Users, BarChart3, CreditCard } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -112,22 +112,6 @@ export default function Home() {
               className="inline-flex items-center text-red-600 hover:text-red-700 font-medium"
             >
               ดูสต็อก →
-            </Link>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-            <div className="flex items-center mb-4">
-              <Settings className="h-8 w-8 text-gray-600 mr-3" />
-              <h3 className="text-xl font-semibold text-gray-900">ตั้งค่า</h3>
-            </div>
-            <p className="text-gray-600 mb-4">
-              ตั้งค่าระบบ ข้อมูลร้าน และการเชื่อมต่อต่างๆ
-            </p>
-            <Link 
-              href="/settings" 
-              className="inline-flex items-center text-gray-600 hover:text-gray-700 font-medium"
-            >
-              ตั้งค่า →
             </Link>
           </div>
         </div>
